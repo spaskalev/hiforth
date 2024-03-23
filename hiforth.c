@@ -1,4 +1,5 @@
 #include <setjmp.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -38,7 +39,7 @@ void trampoline(struct ctx* c) {
  * Stops the execution of the provided context.
  */
 void halt(struct ctx* c) {
-   printf("halt reached!\n");
+   printf("called halt\n");
    longjmp(c->trampoline, 1);
 }
 
@@ -46,6 +47,7 @@ void halt(struct ctx* c) {
  * Duplicate the top of the data stack.
  */
 void dup(struct ctx* c) {
+   printf("called dup\n");
    memcpy(c->dsi + WORD_SIZE, c->dsi, WORD_SIZE);   // Duplicate
    c->dsi += WORD_SIZE;                             // Bump the data stack
 }
@@ -54,6 +56,7 @@ void dup(struct ctx* c) {
  * Put a constant on the data stack.
  */
 void lit(struct ctx* c) {
+   printf("called lit\n");
    c->dsi += WORD_SIZE;                   // Bump the data stack
    memcpy(c->dsi, c->w + 1, WORD_SIZE);   // Copy literal
 }
@@ -62,6 +65,7 @@ void lit(struct ctx* c) {
  * Sum two integers from the data stack
  */
 void add(struct ctx* c) {
+   printf("called add\n");
    intptr_t a, b;
    memcpy(&a, c->dsi, WORD_SIZE);
    memcpy(&b, c->dsi - WORD_SIZE, WORD_SIZE);
@@ -75,6 +79,7 @@ void add(struct ctx* c) {
  * Multiply two integers from the data stack
  */
 void mul(struct ctx* c) {
+   printf("called mul\n");
    intptr_t a, b;
    memcpy(&a, c->dsi, WORD_SIZE);
    memcpy(&b, c->dsi - WORD_SIZE, WORD_SIZE);
@@ -111,44 +116,37 @@ void print_top(struct ctx* c) {
 //    memcpy(&c->ip, c->rsi, WORD_SIZE);   // Restore the ip
 // }
 
+void place(unsigned char **mem, word wrd, int vc, ...) {
+
+   intptr_t *def = malloc(WORD_SIZE * (1 + vc));
+   memset(def, 0, WORD_SIZE * (1 + vc));
+   memcpy(def, &wrd, WORD_SIZE);
+
+   va_list args;
+   va_start(args, vc);
+   int c = 1;
+   while(c <= vc) {
+      def[c] = va_arg(args, intptr_t);
+      c++;
+   }
+   va_end(args);
+
+   memcpy(*mem, &def, WORD_SIZE);
+   *mem += WORD_SIZE;   // Note: WORD_SIZE here, this is the thread
+}
+
 int main() {
    unsigned char memory[4096] = {0};
-   long int memip = 0;
    unsigned char data_stack[128] = {0};
    unsigned char return_stack[128] = {0};
 
+   unsigned char *mem = memory;
 
-   intptr_t *i1 = malloc(WORD_SIZE * 2);
-   memset(i1, 0, WORD_SIZE * 2);
-   word p = &lit;
-   memcpy(i1, &p, WORD_SIZE);
-   i1[1] = 3;
-   memcpy(memory + memip, &i1, WORD_SIZE);
-   memip += WORD_SIZE;
-
-   intptr_t *i2 = malloc(WORD_SIZE);
-   p = &dup;
-   memcpy(i2, &p, WORD_SIZE);
-   memcpy(memory + memip, &i2, WORD_SIZE);
-   memip += WORD_SIZE;
-
-   intptr_t *i3 = malloc(WORD_SIZE);
-   p = &mul;
-   memcpy(i3, &p, WORD_SIZE);
-   memcpy(memory + memip, &i3, WORD_SIZE);
-   memip += WORD_SIZE;
-
-   intptr_t *i4 = malloc(WORD_SIZE);
-   p = &print_top;
-   memcpy(i4, &p, WORD_SIZE);
-   memcpy(memory + memip, &i4, WORD_SIZE);
-   memip += WORD_SIZE;
-
-   intptr_t *i5 = malloc(WORD_SIZE);
-   p = &halt;
-   memcpy(i5, &p, WORD_SIZE);
-   memcpy(memory + memip, &i5, WORD_SIZE);
-   memip += WORD_SIZE;
+   place(&mem, lit, 1, 2);
+   place(&mem, dup, 0);
+   place(&mem, add, 0);
+   place(&mem, print_top, 0);
+   place(&mem, halt, 0);
 
    struct ctx c = {0};
    c.ip = memory;
@@ -157,11 +155,3 @@ int main() {
 
    trampoline(&c);
 }
-
-/*
-   // word p = &halt;
-   // memcpy(memory + 8, &p, sizeof(word));
-
-   // intptr_t *i = (intptr_t*) (memory+8);
-   // memcpy(memory, &i, sizeof(intptr_t));
-*/
