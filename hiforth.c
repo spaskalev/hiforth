@@ -106,23 +106,24 @@ int main() {
 
 
    intptr_t *i1 = malloc(WORD_SIZE * 2);
+   memset(i1, 0, WORD_SIZE * 2);
    word p = &lit;
    memcpy(i1, &p, WORD_SIZE);
-   i1[1] = 3;
+   i1[1] = 1;
    memcpy(memory + memip, &i1, WORD_SIZE);
    memip += WORD_SIZE;
 
-   intptr_t *i2 = malloc(WORD_SIZE);
-   p = &dup;
-   memcpy(i2, &p, WORD_SIZE);
-   memcpy(memory + memip, &i2, WORD_SIZE);
-   memip += WORD_SIZE;
+   // intptr_t *i2 = malloc(WORD_SIZE);
+   // p = &dup;
+   // memcpy(i2, &p, WORD_SIZE);
+   // memcpy(memory + memip, &i2, WORD_SIZE);
+   // memip += WORD_SIZE;
 
-   intptr_t *i3 = malloc(WORD_SIZE);
-   p = &add;
-   memcpy(i3, &p, WORD_SIZE);
-   memcpy(memory + memip, &i3, WORD_SIZE);
-   memip += WORD_SIZE;
+   // intptr_t *i3 = malloc(WORD_SIZE);
+   // p = &add;
+   // memcpy(i3, &p, WORD_SIZE);
+   // memcpy(memory + memip, &i3, WORD_SIZE);
+   // memip += WORD_SIZE;
 
    intptr_t *i4 = malloc(WORD_SIZE);
    p = &print_top;
