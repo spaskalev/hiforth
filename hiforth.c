@@ -29,8 +29,8 @@ void trampoline(struct ctx* c) {
    }
    while(1) {
       memcpy(&c->w, c->ip, WORD_SIZE);   // Store first indirection in work register
-      c->ip += WORD_SIZE;                   // Advance ip
-      ((word) *(c->w))(c);                  // Call second indirection
+      c->ip += WORD_SIZE;                // Advance ip
+      ((word) *(c->w))(c);               // Call second indirection
    }
 }
 
@@ -46,16 +46,16 @@ void halt(struct ctx* c) {
  * Duplicate the top of the data stack.
  */
 void dup(struct ctx* c) {
-   memcpy(c->dsi + WORD_SIZE, c->dsi, WORD_SIZE); // Duplicate
-   c->dsi += WORD_SIZE;                 // Bump the data stack
+   memcpy(c->dsi + WORD_SIZE, c->dsi, WORD_SIZE);   // Duplicate
+   c->dsi += WORD_SIZE;                             // Bump the data stack
 }
 
 /*
  * Put a constant on the data stack.
  */
 void lit(struct ctx* c) {
-   c->dsi += WORD_SIZE;                 // Bump the data stack
-   memcpy(c->dsi, c->w + 1, WORD_SIZE); // Copy literal
+   c->dsi += WORD_SIZE;                   // Bump the data stack
+   memcpy(c->dsi, c->w + 1, WORD_SIZE);   // Copy literal
 }
 
 /*
@@ -67,6 +67,19 @@ void add(struct ctx* c) {
    memcpy(&b, c->dsi - WORD_SIZE, WORD_SIZE);
 
    a += b;
+   c->dsi -= WORD_SIZE;
+   memcpy(c->dsi, &a, WORD_SIZE);
+}
+
+/*
+ * Multiply two integers from the data stack
+ */
+void mul(struct ctx* c) {
+   intptr_t a, b;
+   memcpy(&a, c->dsi, WORD_SIZE);
+   memcpy(&b, c->dsi - WORD_SIZE, WORD_SIZE);
+
+   a *= b;
    c->dsi -= WORD_SIZE;
    memcpy(c->dsi, &a, WORD_SIZE);
 }
@@ -109,7 +122,7 @@ int main() {
    memset(i1, 0, WORD_SIZE * 2);
    word p = &lit;
    memcpy(i1, &p, WORD_SIZE);
-   i1[1] = 1;
+   i1[1] = 3;
    memcpy(memory + memip, &i1, WORD_SIZE);
    memip += WORD_SIZE;
 
@@ -120,7 +133,7 @@ int main() {
    memip += WORD_SIZE;
 
    intptr_t *i3 = malloc(WORD_SIZE);
-   p = &add;
+   p = &mul;
    memcpy(i3, &p, WORD_SIZE);
    memcpy(memory + memip, &i3, WORD_SIZE);
    memip += WORD_SIZE;
