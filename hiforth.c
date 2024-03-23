@@ -14,11 +14,12 @@ struct ctx;
 typedef void (*word)(struct ctx* c);
 
 struct ctx {
-   unsigned char *ip;           // instruction pointer
-   unsigned char *dsi;          // data stack index
-   unsigned char *rsi;          // return stack index
-   intptr_t      *w;            // work register
-   jmp_buf        trampoline;
+   unsigned char *ip;    // instruction pointer
+   unsigned char *dsi;   // data stack index
+   unsigned char *rsi;   // return stack index
+   intptr_t      *w;     // work register
+
+   jmp_buf        trampoline;   // for exiting the trampoline
 };
 
 /*
@@ -98,25 +99,29 @@ void print_top(struct ctx* c) {
    printf("top of stack: %lu\n", a);
 }
 
-// /*
-//  * Starting handler for non-machine words.
-//  */
-// void enter(struct ctx* c) {
-//    c->rsi += WORD_SIZE;                 // Bump the return stack
-//    memcpy(c->rsi, &c->ip, WORD_SIZE);   // Store the current ip on it
+/*
+ * Starting handler for non-machine words.
+ */
+void enter(struct ctx* c) {
+   printf("called enter\n");
 
-//    c->ip = c->w + WORD_SIZE;            // Update the ip with the next word
-// }
+   c->rsi += WORD_SIZE;                    // Bump the return stack
+   memcpy(c->rsi, &c->ip, WORD_SIZE);      // Store the current ip on it
 
-// /*
-//  * Ending handler for non-machine words.
-//  */
-// void leave(struct ctx* c) {
-//    c->rsi -= WORD_SIZE;                 // Pop the return stack
-//    memcpy(&c->ip, c->rsi, WORD_SIZE);   // Restore the ip
-// }
+   c->ip = (unsigned char *) (c->w + 1);   // Update the ip with the next word
+}
 
-void place(unsigned char **mem, word wrd, int vc, ...) {
+/*
+ * Ending handler for non-machine words.
+ */
+void leave(struct ctx* c) {
+   printf("called leave\n");
+
+   memcpy(&c->ip, c->rsi, WORD_SIZE);   // Restore the ip
+   c->rsi -= WORD_SIZE;                 // Pop the return stack
+}
+
+unsigned char *place(unsigned char **mem, word wrd, int vc, ...) {
 
    intptr_t *def = malloc(WORD_SIZE * (1 + vc));
    memset(def, 0, WORD_SIZE * (1 + vc));
@@ -133,6 +138,8 @@ void place(unsigned char **mem, word wrd, int vc, ...) {
 
    memcpy(*mem, &def, WORD_SIZE);
    *mem += WORD_SIZE;   // Note: WORD_SIZE here, this is the thread
+
+   return (unsigned char *) (def + 1);
 }
 
 int main() {
@@ -142,11 +149,20 @@ int main() {
 
    unsigned char *mem = memory;
 
-   place(&mem, lit, 1, 2);
-   place(&mem, dup, 0);
+   unsigned char *fun = place(&mem, enter, 4, 0, 0, 0, 0);
+   place(&fun, lit, 1, 2);
+   place(&fun, dup, 0);
+   place(&fun, leave, 0);
+
    place(&mem, add, 0);
    place(&mem, print_top, 0);
    place(&mem, halt, 0);
+
+   // place(&mem, lit, 1, 2);
+   // place(&mem, dup, 0);
+   // place(&mem, add, 0);
+   // place(&mem, print_top, 0);
+   // place(&mem, halt, 0);
 
    struct ctx c = {0};
    c.ip = memory;
